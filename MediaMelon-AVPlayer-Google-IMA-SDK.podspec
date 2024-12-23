@@ -11,5 +11,6 @@ Pod::Spec.new do |spec|
   spec.source       = { :git => "https://github.com/MediamelonSDK/mm-ios-sdk-avplayer-ima.git", :tag => spec.version.to_s }
   spec.source_files    = 'AVPlayerIntegrationWrapper.swift'
   spec.dependency 'MediaMelon-Google-IMA-SDK', '~> 0.0.1'
+  spec.dependency 'GoogleAds-IMA-iOS-SDK'
 end
 
