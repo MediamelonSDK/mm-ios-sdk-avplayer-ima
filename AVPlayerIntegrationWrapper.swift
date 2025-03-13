@@ -539,7 +539,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         IMASDK = "_IMA"
         #endif
         
-        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".2.0"
+        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.1"
         super.init()
     }
     
@@ -600,13 +600,14 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer with isLive, URL = \(aInfo.assetURL ?? "") ---")
-        GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => SDK Version = \(AVPlayerIntegrationWrapper.shared.sdkVersion) ---")
         
+        AVPlayerIntegrationWrapper.shared.contentURL = aInfo.assetURL ?? ""
+        AVPlayerIntegrationWrapper.shared.extIsLive = isLive
+        GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.setPlayerRegistrationInformation(registrationInformation: pInfo, player:aPlayer)
         AVPlayerIntegrationWrapper.changeAssetForPlayer(assetInfo: aInfo, player: aPlayer)
-        
-        AVPlayerIntegrationWrapper.shared.extIsLive = isLive
+                
         GenericMMWrapper.shared.reportDeviceCapabilities();
     }
     
@@ -614,9 +615,10 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer without isLive, URL = \(aInfo.assetURL ?? "") ---")
-        GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => SDK Version = \(AVPlayerIntegrationWrapper.shared.sdkVersion) ---")
         
+        AVPlayerIntegrationWrapper.shared.contentURL = aInfo.assetURL ?? ""
+        GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.setPlayerRegistrationInformation(registrationInformation: pInfo, player:aPlayer)
         AVPlayerIntegrationWrapper.changeAssetForPlayer(assetInfo: aInfo, player: aPlayer)
         
