@@ -539,7 +539,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         IMASDK = "_IMA"
         #endif
         
-        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.1"
+        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.2"
         super.init()
     }
     
@@ -601,8 +601,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         defer { objc_sync_exit(self) }
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer with isLive, URL = \(aInfo.assetURL ?? "") ---")
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => SDK Version = \(AVPlayerIntegrationWrapper.shared.sdkVersion) ---")
-        
-        AVPlayerIntegrationWrapper.shared.contentURL = aInfo.assetURL ?? ""
+                
         AVPlayerIntegrationWrapper.shared.extIsLive = isLive
         GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.setPlayerRegistrationInformation(registrationInformation: pInfo, player:aPlayer)
@@ -616,8 +615,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         defer { objc_sync_exit(self) }
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer without isLive, URL = \(aInfo.assetURL ?? "") ---")
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => SDK Version = \(AVPlayerIntegrationWrapper.shared.sdkVersion) ---")
-        
-        AVPlayerIntegrationWrapper.shared.contentURL = aInfo.assetURL ?? ""
+                
         GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.setPlayerRegistrationInformation(registrationInformation: pInfo, player:aPlayer)
         AVPlayerIntegrationWrapper.changeAssetForPlayer(assetInfo: aInfo, player: aPlayer)
@@ -761,7 +759,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
             return
         }
         guard let indicatedStream = lastEvent.uri else { return }
-        guard let streamUrl = URL(string: self.contentURL!) else { return }
+        guard let contentURL = self.contentURL, let streamUrl = URL(string: contentURL) else { return }
         if let url = URL(string: indicatedStream) {
             if url.host != streamUrl.host {
                 AVPlayerIntegrationWrapper.reportMetricValue(metricToOverride: .CDN, value: url.host)
@@ -954,6 +952,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         }
         
         self.sessTerminated = false;
+        contentURL = assetInfo.assetURL
         
         if(deep) {
             GenericMMWrapper.shared.initialiseSession(registrationUri: "https://register.mediamelon.com/mm-apis/register/", assetInformation: assetInfo)
