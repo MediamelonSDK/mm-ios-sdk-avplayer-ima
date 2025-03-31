@@ -539,7 +539,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         IMASDK = "_IMA"
         #endif
         
-        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.2"
+        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.3"
         super.init()
     }
     
