@@ -517,7 +517,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     private static let KErrorDomain = "ErrorDomain"
     private static let KErrorComment = "ErrorComment"
     private static let KPlaybackPosPollingIntervalSec = 0.5
-    private static let KPlaybackPosPollingIntervalMSec = 500
+    private static let KPlaybackPosPollingIntervalMSec = 1000
     private static let KMinPlaybackPosDriftForPlayingStateMSec = 400
     private static let KMinPlaybackPosDriftForPausedStateMSec = 200
     private static var appNotificationObsRegistered = false
@@ -539,7 +539,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         IMASDK = "_IMA"
         #endif
         
-        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.3"
+        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.4"
         super.init()
     }
     
@@ -630,7 +630,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     public static func changeAssetForPlayer(assetInfo aInfo: MMAssetInformation, player aPlayer: AVPlayer?) {
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => changeAssetForPlayer, URL = \(aInfo.assetURL ?? "") ---")
         AVPlayerIntegrationWrapper.shared.assetInfo = aInfo
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => cleanupCurrItem from changeAssetForPlayer ---")
         AVPlayerIntegrationWrapper.shared.cleanupCurrItem();
         
         if let newPlayer = aPlayer {
@@ -863,7 +862,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     private func playbackDidReachEnd(notification noti: Notification) {
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => playbackDidReachEnd ---")
         self.reportStoppedState()
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => cleanupCurrItem from playbackDidReachEnd ---")
         self.cleanupCurrItem()
     }
     
@@ -871,7 +869,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => playbackFailedToPlayTillEnd ---")
         GenericMMWrapper.shared.reportError(error: noti.description, playbackPosMilliSec: -1)
         self.currentState = .ERROR
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => cleanupCurrItem from playbackFailedToPlayTillEnd ---")
         self.cleanupCurrItem()
     }
     
@@ -898,6 +895,8 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         self.isInitialBitrateReported = false
         self.contentURL = nil
         self.currentState = CurrentPlayerState.IDLE
+        self.currentBufferState = CurrentBufferingState.IDLE
+        self.seekState = Seek.IDLE
         self.loadEventTriggered = false
         
         if AVPlayerIntegrationWrapper.appNotificationObsRegistered == false{
@@ -1039,7 +1038,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
             
             self.reportStoppedState()
             self.sessTerminated = true;
-            self.seekState = .IDLE
             let url = (playerItem.asset as? AVURLAsset)?.url
             AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => resetSession \(String(describing: url)) ---")
         }
@@ -1169,7 +1167,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
             currContent = contentURL;
         }
         GenericMMWrapper.shared.reportError(error: String("Playback of \(currContent) Failed"), playbackPosMilliSec: self.getPlaybackPosition())
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => cleanupCurrItem from playbackFailed ---")
         self.cleanupCurrItem();
     }
     
@@ -1225,6 +1222,14 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         }
         else if (keyPath == AVPlayerItemPropertiesToObserve.PlaybackLikelyToKeepUp.rawValue || keyPath == AVPlayerItemPropertiesToObserve.PlaybackBufferFull.rawValue) {
             //Change to handle the event: kCMTimebaseNotification_EffectiveRateChanged for buffering completion
+            
+            //Adding Seek State Check here to avoid multiple buffering reports during seeking
+            if(seekState != .START) {
+                if(currentBufferState == CurrentBufferingState.BUFFER_STARTED) {
+                    GenericMMWrapper.shared.reportBufferingCompleted()                    
+                    currentBufferState = CurrentBufferingState.BUFFER_COMPLETED;
+                }
+            }
         }
         else if keyPath == AVPlayerItemPropertiesToObserve.PresentationSize.rawValue {
             if let presentationSz = change?[NSKeyValueChangeKey.newKey]{
@@ -1508,10 +1513,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
                             self?.seekState = .COMPLETE
                             GenericMMWrapper.shared.reportPlayerSeekCompleted(seekEndPos: Int(currentPlaybackPos))
                         }
-                        
-                        //ENABLE IMA
-//                        var adPlaying = MMIMAAdManager.sharedManager.isAdPlaying_;
-                        // for IMA
                         if (self?.currentState == .PAUSED || self?.currentState == .IDLE) {
                             AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => tick LATENCY: Report PLAYING ---")
                             self?.timeoutOccurred()
@@ -1549,14 +1550,15 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
                         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => tick process possibility of occurrence of seek \(currentRecordTime) - \(lastPlaybackPosRecordTime) = \(currentRecordTime - lastPlaybackPosRecordTime) ---")
                         
                         if (AVPlayerIntegrationWrapper.isPossibleSeek(currpos: currentPlaybackPos, lastPos: lastPlaybackPos, currentRecordTime: currentRecordTime, lastRecInstant: lastPlaybackPosRecordTime)) {
+                            
+                            if self?.currentState != .STOPPED && self?.seekState != .START {
+                                self?.seekState = .START                                
+                                GenericMMWrapper.shared.reportPlayerSeekStarted()
+                            }
+                            
                             if (self?.sessTerminated == true){
                                 AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => tick Seek: Forcing restart of session via Seek ---")
                                 self?.continueStoppedSession()
-                            }
-                            
-                            if self?.seekState != .START {
-                                self?.seekState = .START
-                                GenericMMWrapper.shared.reportPlayerSeekStarted()
                             }
                         }
                     } else {
