@@ -6,36 +6,17 @@ import os
 import CoreTelephony
 #endif
 
-#if canImport(MediaMelonNowtilus)
-import MediaMelonNowtilus
-#endif
-
-#if canImport(MediaMelonNowtilustvOS)
-#if os(tvOS)
-import MediaMelonNowtilustvOS
-#endif
-#endif
-
 #if canImport(MediaMelonIMA)
 import MediaMelonIMA
 import GoogleInteractiveMediaAds
 #endif
 
+#if canImport(MediaMelonNowtilus)
+import MediaMelonNowtilus
+#endif
+
 #if canImport(MediaMelonQoE)
 import MediaMelonQoE
-#endif
-
-#if canImport(MediaMelonQoEtvOS)
-#if os(tvOS)
-import MediaMelonQoEtvOS
-#endif
-#endif
-
-#if canImport(MediaMelonIMAtvOS)
-#if os(tvOS)
-import MediaMelonIMAtvOS
-import GoogleInteractiveMediaAds
-#endif
 #endif
 
 private var AVFoundationPlayerViewControllerKVOContext = 0
@@ -224,192 +205,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
 }
 #endif
 
-//ENABLE SSAI
-#if canImport(MediaMelonNowtilustvOS)
-#if os(tvOS)
-public protocol MMSSAIManagerDelegate: AnyObject {
-    func notifyMMSSAIAdEvents(eventName: MMSSAIAdSate, adInfo: MMSSAIAdDetails)
-    func notifyMMSSAIAdEventsWithTimeline(eventName: MMSSAIAdSate, adTimeline: [MMSSAIAdDetails])
-}
-
-extension AVPlayerIntegrationWrapper: GenericAdProtocol {
-    public func notifySSAIAdDetailsWithTimeline(eventName: MMSSAIAdSate, adTimeline: [MMSSAIAdDetails]) {
-        self.mmssaiManagerDelegate?.notifyMMSSAIAdEventsWithTimeline(eventName: eventName, adTimeline: adTimeline)
-    }
-    
-    public func notifySSAIAdDetails(eventName: MMSSAIAdSate, adInfo: MMSSAIAdDetails) {
-        self.mmssaiManagerDelegate?.notifyMMSSAIAdEvents(eventName: eventName, adInfo: adInfo)
-    }
-}
-
-extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate {
-    public func getVersion() -> String {
-        return AVPlayerIntegrationWrapper.shared.sdkVersion
-    }
-    
-    public static func getAdId(adInfo: MMSSAIAdDetails)->String{
-        return (adInfo.adId)
-    }
-    
-    public static func getAdTitle(adInfo: MMSSAIAdDetails)->String{
-        return (adInfo.adTitle)
-    }
-    
-    public static func getAdIndex(adInfo: MMSSAIAdDetails)->Int{
-        return (adInfo.adIndex)
-    }
-    
-    public static func getAdTotalAdsInPod(adInfo: MMSSAIAdDetails)->Int{
-        return (adInfo.adTotalAdsInPod)
-    }
-    
-    public static func getAdServer(adInfo: MMSSAIAdDetails)->String{
-        return (adInfo.adServer)
-    }
-    
-    public static func getAdDuration(adInfo: MMSSAIAdDetails)->Int64{
-        return (adInfo.adDuration)
-    }
-    
-    public static func getAdPosition(adInfo: MMSSAIAdDetails)->String{
-        return (adInfo.position)
-    }
-    
-    public static func getAdPlaybackTime(adInfo: MMSSAIAdDetails)->Int64{
-        return (adInfo.adCurrentPlaybackTime)
-    }
-    
-    public static func getClickThroughURL(adInfo: MMSSAIAdDetails)->String{
-        for adClickEvent in adInfo.adClickEvents
-        {
-            let eventType =  (adClickEvent.type.rawValue)
-            if eventType.contains("ClickThrough") && adClickEvent.url?.absoluteString != nil
-            {
-                return (adClickEvent.url?.absoluteString)!
-            }
-        }
-        return "None"
-    }
-    
-    public static func getClickTrackingURL(adInfo: MMSSAIAdDetails)->String{
-        for adClickEvent in adInfo.adClickEvents
-        {
-            let eventType =  (adClickEvent.type.rawValue)
-            
-            if eventType.contains("ClickTracking") && adClickEvent.url?.absoluteString != nil
-            {
-                return (adClickEvent.url?.absoluteString)!
-            }
-        }
-        return "None"
-    }
-    
-    public static func setMetaDataCollector(player: AVPlayer, collector: AVPlayerItemMetadataCollector, playerItem: AVPlayerItem)
-    {
-        playerItem.add(collector)
-        player.replaceCurrentItem(with: playerItem)
-        collector.setDelegate(self.shared, queue: DispatchQueue.main)
-    }
-    
-    public func metadataCollector(_ metadataCollector: AVPlayerItemMetadataCollector, didCollect metadataGroups: [AVDateRangeMetadataGroup], indexesOfNewGroups: IndexSet, indexesOfModifiedGroups: IndexSet) {
-        var metaDataBlock: AVDateRangeMetadataGroup
-        var metaDataItem: AVMetadataItem
-        var metaString: String!
-        var firstvast = 0
-        
-        for index in indexesOfNewGroups{
-            metaDataBlock =  metadataGroups[index]
-            for (metaDataItem) in metaDataBlock.items {
-                metaString = metaDataItem.identifier?.rawValue
-                
-                if ( metaString.contains("X-AD-VAST"))
-                {
-                    if ( self.vastURL != metaDataItem.stringValue!)
-                    {
-                        self.vastURL = metaDataItem.stringValue!
-                    }
-                    else{
-                        // Same VAST
-                    }
-                }
-                
-                if ( metaString.contains("X-AD-ID"))
-                {
-                    AVPlayerIntegrationWrapper.shared.setValidAdId(validAdId: metaDataItem.stringValue!)
-                }
-            }
-        }
-        
-        for index in indexesOfModifiedGroups{
-            
-            metaDataBlock =  metadataGroups[index]
-            for (metaDataItem) in metaDataBlock.items {
-                
-                metaString = metaDataItem.identifier?.rawValue
-                if ( metaString.contains("X-AD-ID"))
-                {
-                    AVPlayerIntegrationWrapper.shared.setValidAdId(validAdId: metaDataItem.stringValue!)
-                }
-            }
-        }
-        AVPlayerIntegrationWrapper.shared.parseVastURL(vastURL: self.vastURL)
-    }
-    
-    public func initialiseSSAIAdManager(mediaUrl: String, vastUrl: String, isLive: Bool) {
-        self.isLive = isLive
-        GenericMMWrapper.shared.genericAdDelegate = self
-        GenericMMWrapper.shared.initialiseSSAIAdManager(mediaUrl: mediaUrl, vastUrl: vastUrl, isLive: isLive)
-    }
-    
-    public func fireTrackingUrl() {
-        GenericMMWrapper.shared.fireAdClickTrackingURLs()
-    }
-    
-    public func enableSSAILogTrace()
-    {
-        GenericMMWrapper.shared.enableSSAILogTrace()
-    }
-    
-    
-    public func disableSSAILogTrace()
-    {
-        GenericMMWrapper.shared.disableSSAILogTrace()
-    }
-    
-    public func initialiseSSAIAdManager(mediaUrl: String, isLive: Bool, pollForVast: Bool, vodResponseData: Data, clientSideTracking: Bool) {
-        self.isLive = isLive
-        GenericMMWrapper.shared.genericAdDelegate = self
-        GenericMMWrapper.shared.initialiseSSAIAdManager(mediaUrl: mediaUrl, isLive: isLive, pollForVast: pollForVast, vodResponseData: vodResponseData, clientSideTracking: clientSideTracking)
-    }
-    
-    public func syncEpochTime(epochTime: Int64)
-    {
-        GenericMMWrapper.shared.syncEpochTime (epochTime: epochTime)
-    }
-    
-    public func parseVastURL( vastURL: String)
-    {
-        GenericMMWrapper.shared.parseVastURL(vastURL: vastURL)
-    }
-    
-    public func setValidAdId( validAdId: String)
-    {
-        GenericMMWrapper.shared.setValidAdId(validAdId: validAdId)
-    }
-    
-    public func stopSSAIAdManager() {
-        GenericMMWrapper.shared.stopSSAIAdManager()
-    }
-    
-    public func setMacroSubstitution(macroData dictionary: Dictionary<String, Any>){
-        GenericMMWrapper.shared.setMacroSubstitution(macroData: dictionary)
-    }
-    //ENABLE SSAI
-}
-#endif
-#endif
-
-
 @objc public class AVPlayerIntegrationWrapper: NSObject { //ENABLE SSAI
     
     //MARK:- OBJECTS
@@ -467,9 +262,9 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     private static var enableLogging = false
     private var extIsLive: Bool?
     private var seekState: Seek = Seek.IDLE
+    private var isAutoErrorCaptureDisabled: Bool = false
     
     //ENABLE SSAI
-    
 #if canImport(MediaMelonNowtilus)
     private var vastURL = ""
     private var mutex = pthread_mutex_t()
@@ -479,20 +274,6 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     var isLive: Bool = false
     public weak var genericAdDelegate: GenericAdProtocol?
 #endif
-    
-    
-#if canImport(MediaMelonNowtilustvOS)
-#if os(tvOS)
-    private var vastURL = ""
-    private var mutex = pthread_mutex_t()
-    public weak var mmssaiManagerDelegate: MMSSAIManagerDelegate?
-    fileprivate var mmssaiAdManager: MMSSAIAdManager?
-    fileprivate var currentAdState = MMAdState.UNKNOWN
-    var isLive: Bool = false
-    public weak var genericAdDelegate: GenericAdProtocol?
-#endif
-#endif
-    
     
     private enum AVPlayerPropertiesToObserve: String {
         case PlaybackRate = "rate",
@@ -535,11 +316,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         IMASDK = "_IMA"
         #endif
         
-        #if canImport(MediaMelonIMAtvOS)
-        IMASDK = "_IMA"
-        #endif
-        
-        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".3.4"
+        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".5.0"
         super.init()
     }
     
@@ -713,36 +490,75 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     }
     
     public func reportExperimentName(experimentName: String?) {
-        GenericMMWrapper.shared.reportExperimentName(experimentName: experimentName)
+        GenericMMWrapper.shared.reportExperimentName(experimentName: experimentName ?? "")
     }
     
     public func reportSubPropertyID(subPropertyId: String?) {
-        GenericMMWrapper.shared.reportSubPropertyID(subPropertyId: subPropertyId)
+        GenericMMWrapper.shared.reportSubPropertyID(subPropertyId: subPropertyId ?? "")
     }
     
     public func reportViewSessionID(viewSessionId: String?) {
-        GenericMMWrapper.shared.reportViewSessionID(viewSessionId: viewSessionId)
+        GenericMMWrapper.shared.reportViewSessionID(viewSessionId: viewSessionId ?? "")
     }
     
-    public func reportBasePlayerInfo(basePlayerName: String?, basePlayerVersion: String?) {
-        GenericMMWrapper.shared.reportBasePlayerInfo(basePlayerName: basePlayerName, basePlayerVersion: basePlayerVersion)
+    public func reportAppSessionID(appSessionId: String?) {
+        GenericMMWrapper.shared.reportAppSessionID(appSessionId: appSessionId ?? "")
     }
+    
+    public func reportPlayerResolution(width: Int, height: Int){
+        GenericMMWrapper.shared.reportPlayerResolution(width: width, height: height)
+    }
+    
+    public func reportFallbackEvent(fallbackManifestURL: String = "NA", description: String = "Unknown"){
+        GenericMMWrapper.shared.reportFallbackEvent(fallbackManifestURL: fallbackManifestURL, description: description)
+    }
+    
+    public func reportCDN(cdn: String){
+        GenericMMWrapper.shared.reportStringDimension(dimension: .CDN, value: cdn)
+    }
+    
+    public func updateStreamURL(streamURL: String){
+        GenericMMWrapper.reportMetricValue(metricToOverride: .StreamURL, value: streamURL)
+    }
+    
+    public func reportStreamInfo(streamFormat: String = "", mediaType: String = "", sourceType: String = ""){
+        GenericMMWrapper.shared.reportStreamInfo(streamFormat: streamFormat, mediaType: mediaType, sourceType: sourceType)
+    }
+    
+    public func reportDeviceID(deviceID: String){
+        GenericMMWrapper.shared.reportDeviceID(deviceID: deviceID)
+    }
+    
+    public func disableAutoErrorCapture(){
+        isAutoErrorCaptureDisabled = true
+    }
+    
     
     /**
      * If application wants to send application specific error information to SDK, the application can use this API.
      * Note - SDK internally takes care of notifying the error messages provided to it by AVFoundation framwork
      */
-    public func reportError(error: String, playbackPosMilliSec: Int) {
-        GenericMMWrapper.shared.reportError(error: error, playbackPosMilliSec: playbackPosMilliSec)
+    public func reportError(errorCode: String, errorMessage: String, errorDetails: String){
+        let code = errorCode.isEmpty ? "NA" : errorCode
+        let message = errorMessage.isEmpty ? "NA" : errorMessage
+        let details = errorDetails.isEmpty ? "NA" : errorDetails
+        
+        let errorString = code + "_" + message + "@@FATAL@@" + details;
+        GenericMMWrapper.shared.reportError(error: errorString, playbackPosMilliSec: getPlaybackPosition())
     }
     
-    public static func reportMetricValue(metricToOverride: MMOverridableMetrics, value: String!) {
-        switch metricToOverride {
-        case MMOverridableMetrics.CDN:
-            GenericMMWrapper.reportMetricValue(metricToOverride: MMOverridableMetric.ServerAddress, value: value)
-        default:
-            AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => Only CDN metric is overridable as of now ---")
-        }
+    public func reportWarning(warningCode: String, warningMessage: String, warningDetails: String){
+        let code = warningCode.isEmpty ? "NA" : warningCode
+        let message = warningMessage.isEmpty ? "NA" : warningMessage
+        let details = warningDetails.isEmpty ? "NA" : warningDetails
+        
+        let warningString = code + "_" + message + "@@WARNING@@" + details;
+        GenericMMWrapper.shared.reportError(error: warningString, playbackPosMilliSec: getPlaybackPosition())
+    }
+    
+    private func reportPlayerError(_ error: String, at playbackPosition: Int){
+        guard !isAutoErrorCaptureDisabled else { return }
+        GenericMMWrapper.shared.reportError(error: error, playbackPosMilliSec: playbackPosition)
     }
     
     private static func logDebugStatement(_ logStatement: String) {
@@ -757,14 +573,13 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
               let lastEvent = playerItem.accessLog()?.events.last else {
             return
         }
-        guard let indicatedStream = lastEvent.uri else { return }
-        guard let contentURL = self.contentURL, let streamUrl = URL(string: contentURL) else { return }
-        if let url = URL(string: indicatedStream) {
-            if url.host != streamUrl.host {
-                AVPlayerIntegrationWrapper.reportMetricValue(metricToOverride: .CDN, value: url.host)
-            }
-        }
-        // Use bitrate to determine bandwidth decrease or increase.
+        
+        /*
+            guard let indicatedStream = lastEvent.uri else { return }
+            guard let contentURL = self.contentURL, let streamUrl = URL(string: contentURL) else { return }
+            
+         // Use bitrate to determine bandwidth decrease or increase.
+        */
     }
     
     @objc func reportMediaSelectionChange()
@@ -867,14 +682,14 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     
     private func playbackFailedToPlayTillEnd(notification noti: Notification) {
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => playbackFailedToPlayTillEnd ---")
-        GenericMMWrapper.shared.reportError(error: noti.description, playbackPosMilliSec: -1)
+        reportPlayerError(noti.description, at: -1)
         self.currentState = .ERROR
         self.cleanupCurrItem()
     }
     
     private func handleErrorWithMessage(message: String?, error: Error? = nil) {
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => handleErrorWithMessage. Error occurred with message: \(String(describing: message)), error: \(String(describing: error)).")
-        GenericMMWrapper.shared.reportError(error: String(describing: error), playbackPosMilliSec: getPlaybackPosition())
+        reportPlayerError(String(describing: error), at: getPlaybackPosition())
     }
     
     private func reset() {
@@ -1166,7 +981,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         if let contentURL = self.contentURL {
             currContent = contentURL;
         }
-        GenericMMWrapper.shared.reportError(error: String("Playback of \(currContent) Failed"), playbackPosMilliSec: self.getPlaybackPosition())
+        reportPlayerError(String("Playback of \(currContent) Failed"), at: self.getPlaybackPosition())
         self.cleanupCurrItem();
     }
     
@@ -1226,7 +1041,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
             //Adding Seek State Check here to avoid multiple buffering reports during seeking
             if(seekState != .START) {
                 if(currentBufferState == CurrentBufferingState.BUFFER_STARTED) {
-                    GenericMMWrapper.shared.reportBufferingCompleted()                    
+                    GenericMMWrapper.shared.reportBufferingCompleted()
                     currentBufferState = CurrentBufferingState.BUFFER_COMPLETED;
                 }
             }
@@ -1454,7 +1269,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
                     //Lets not distinguish errors, filterning can better be handled in backend
                     //Session termination can be handled via player notifications when it gives up
                     let errString  = kvpsForErr.joined(separator: ":")
-                    GenericMMWrapper.shared.reportError(error: errString, playbackPosMilliSec: getPlaybackPosition())
+                    reportPlayerError(errString, at: getPlaybackPosition())
                 }
             }
         }
@@ -1552,7 +1367,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
                         if (AVPlayerIntegrationWrapper.isPossibleSeek(currpos: currentPlaybackPos, lastPos: lastPlaybackPos, currentRecordTime: currentRecordTime, lastRecInstant: lastPlaybackPosRecordTime)) {
                             
                             if self?.currentState != .STOPPED && self?.seekState != .START {
-                                self?.seekState = .START                                
+                                self?.seekState = .START
                                 GenericMMWrapper.shared.reportPlayerSeekStarted()
                             }
                             
@@ -1570,21 +1385,12 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
             }
         }
     }
-    
-    
+
     //ENABLE IMA
     //IMA ADS FUNCTIONALITIES
     #if canImport(MediaMelonIMA)
     @objc public func setMMIMAContext(adLoadingContext: IMAAdsLoader, adDisplay: IMAAVPlayerVideoDisplay?, hasAdTag: Bool) {
         MMIMAAdManager.sharedManager.setIMAAdsContext(context: adLoadingContext, adsDisplay: adDisplay, hasAdTag: hasAdTag)
     }
-    #endif
-    
-    #if canImport(MediaMelonIMAtvOS)
-    #if os(tvOS)
-    @objc public func setMMIMAContext(adLoadingContext: IMAAdsLoader, adDisplay: IMAAVPlayerVideoDisplay?, hasAdTag: Bool) {
-        MMIMAAdManager.sharedManager.setIMAAdsContext(context: adLoadingContext, adsDisplay: adDisplay, hasAdTag: hasAdTag)
-    }
-    #endif
     #endif
 }
