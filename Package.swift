@@ -22,7 +22,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/MediamelonSDK/mm-ios-qoe-sdk-ima",
-            exact: "2.16.0"
+            exact: "2.16.1"
         )
     ],
 
