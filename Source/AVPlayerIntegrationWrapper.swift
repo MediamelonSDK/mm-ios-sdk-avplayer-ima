@@ -316,7 +316,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         IMASDK = "_IMA"
         #endif
         
-        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".5.0"
+        sdkVersion = coreSDK + IMASDK + "_AV_" + GenericMMWrapper.shared.getCoreSDKVersion() + ".6.0"
         super.init()
     }
     
@@ -376,28 +376,24 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
     @objc public static func initializeAssetForPlayer(assetInfo aInfo: MMAssetInformation, registrationInformation pInfo: MMRegistrationInformation?, player aPlayer: AVPlayer?, isLive: Bool) {
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer with isLive, URL = \(aInfo.assetURL ?? "") ---")
+        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer with isLive, URL = \(aInfo.assetURL) ---")
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => SDK Version = \(AVPlayerIntegrationWrapper.shared.sdkVersion) ---")
                 
         AVPlayerIntegrationWrapper.shared.extIsLive = isLive
         GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.setPlayerRegistrationInformation(registrationInformation: pInfo, player:aPlayer)
         AVPlayerIntegrationWrapper.changeAssetForPlayer(assetInfo: aInfo, player: aPlayer)
-                
-        GenericMMWrapper.shared.reportDeviceCapabilities();
     }
     
     @objc public static func initializeAssetForPlayer(assetInfo aInfo: MMAssetInformation, registrationInformation pInfo: MMRegistrationInformation?, player aPlayer: AVPlayer?) {
         objc_sync_enter(self)
         defer { objc_sync_exit(self) }
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer without isLive, URL = \(aInfo.assetURL ?? "") ---")
+        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => initializeAssetForPlayer without isLive, URL = \(aInfo.assetURL) ---")
         AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => SDK Version = \(AVPlayerIntegrationWrapper.shared.sdkVersion) ---")
                 
         GenericMMWrapper.shared.reportSDKVersion(sdkVersion: AVPlayerIntegrationWrapper.shared.sdkVersion)
         AVPlayerIntegrationWrapper.setPlayerRegistrationInformation(registrationInformation: pInfo, player:aPlayer)
         AVPlayerIntegrationWrapper.changeAssetForPlayer(assetInfo: aInfo, player: aPlayer)
-        
-        GenericMMWrapper.shared.reportDeviceCapabilities();
     }
     
     /**
@@ -405,7 +401,7 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
      * Please note either changeAssetForPlayer or initializeAssetForPlayer should be called
      */
     public static func changeAssetForPlayer(assetInfo aInfo: MMAssetInformation, player aPlayer: AVPlayer?) {
-        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => changeAssetForPlayer, URL = \(aInfo.assetURL ?? "") ---")
+        AVPlayerIntegrationWrapper.logDebugStatement("--- MM Log => changeAssetForPlayer, URL = \(aInfo.assetURL) ---")
         AVPlayerIntegrationWrapper.shared.assetInfo = aInfo
         AVPlayerIntegrationWrapper.shared.cleanupCurrItem();
         
@@ -472,6 +468,10 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         GenericMMWrapper.shared.reportDeviceMarketingName(deviceMarketingName: deviceMarketingName);
     }
     
+    public func reportDeviceInformation(deviceInfo: MMDeviceInformation) {
+        GenericMMWrapper.shared.reportDeviceInformation(deviceInfo: deviceInfo);
+    }
+    
     /**
      * Application may report the custom metadata associated with the content using this API.
      * Application can set it as a part of MMAVAssetInformation before the start of playback, and
@@ -521,6 +521,10 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         GenericMMWrapper.reportMetricValue(metricToOverride: .StreamURL, value: streamURL)
     }
     
+    public func updateDRM(drmProtection: String, drmLevel: String) {
+        GenericMMWrapper.shared.updateDRM(drmProtection: drmProtection, drmLevel: drmLevel)
+    }
+    
     public func reportStreamInfo(streamFormat: String = "", mediaType: String = "", sourceType: String = ""){
         GenericMMWrapper.shared.reportStreamInfo(streamFormat: streamFormat, mediaType: mediaType, sourceType: sourceType)
     }
@@ -533,6 +537,9 @@ extension AVPlayerIntegrationWrapper: AVPlayerItemMetadataCollectorPushDelegate 
         isAutoErrorCaptureDisabled = true
     }
     
+    public func reportCustomEvent(eventName: String, eventValue: String) {
+        GenericMMWrapper.shared.reportCustomEvent(eventName: eventName, eventValue: eventValue)
+    }
     
     /**
      * If application wants to send application specific error information to SDK, the application can use this API.
